@@ -11,6 +11,7 @@ from pathlib import Path
 from flask import Flask, render_template_string, request, jsonify
 import threading
 import time
+import resource
 
 # Dynamically import ask_llm.py
 ask_llm_path = Path(__file__).parent / 'ask_llm.py'
@@ -32,6 +33,7 @@ HTML_TEMPLATE = '''
         body { background: #0a1833; color: #fff; font-family: Arial, sans-serif; margin: 2em; }
         .llm-result { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 2em; padding: 1em; background: #172a4a; }
         .llm-label { font-weight: bold; font-size: 1.2em; margin-bottom: 0.5em; }
+        .llm-timing { border: 1px solid #ff0; border-radius: 6px; background: #222a44; color: #ff0; padding: 0.3em 0.8em; margin-bottom: 0.7em; display: inline-block; font-family: monospace; font-size: 1em; }
         textarea, input[type="text"] { width: 100%; height: 80px; background: #fff; color: #000; border-radius: 4px; border: 1px solid #888; padding: 0.5em; }
         .prompt-form { margin-bottom: 2em; }
         button { background: #1a2b4c; color: #fff; border: none; border-radius: 4px; padding: 0.5em 1.5em; font-size: 1em; cursor: pointer; }
@@ -55,10 +57,11 @@ HTML_TEMPLATE = '''
             document.getElementById('progress').innerText = '';
             let html = '';
             for (const [label, result] of Object.entries(data.results)) {
-                html += `<div class=\"llm-result\"><div class=\"llm-label\">${label}</div><pre>${result}</pre></div>`;
+                let timing = data.timings[label] || '';
+                html += `<div class=\"llm-result\"><div class=\"llm-label\">${label}</div><div class=\"llm-timing\">${timing}</div><pre>${result}</pre></div>`;
             }
             if (data.local_result) {
-                html += `<div class=\"llm-result\" style=\"background:#1a2b4c;\"><div class=\"llm-label\">LOCAL (Ollama)</div><pre>${data.local_result}</pre></div>`;
+                html += `<div class=\"llm-result\" style=\"background:#1a2b4c;\"><div class=\"llm-label\">LOCAL (Ollama)</div><div class=\"llm-timing\">${data.local_timing || ''}</div><pre>${data.local_result}</pre></div>`;
             }
             document.getElementById('results').innerHTML = html;
         });
@@ -84,12 +87,14 @@ HTML_TEMPLATE = '''
         {% for label, result in results.items() %}
             <div class="llm-result">
                 <div class="llm-label">{{ label }}</div>
+                <div class="llm-timing">{{ timings[label] }}</div>
                 <pre>{{ result }}</pre>
             </div>
         {% endfor %}
         {% if local_result %}
             <div class="llm-result" style="background:#1a2b4c;">
                 <div class="llm-label">LOCAL (Ollama)</div>
+                <div class="llm-timing">{{ local_timing }}</div>
                 <pre>{{ local_result }}</pre>
             </div>
         {% endif %}
@@ -99,43 +104,65 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-def run_llm(label, prompt):
+def run_llm_with_time(label, prompt):
     from io import StringIO
     import contextlib
+    import time as pytime
     buf = StringIO()
+    start_real = pytime.time()
+    start_usage = resource.getrusage(resource.RUSAGE_SELF)
     with contextlib.redirect_stdout(buf):
         try:
             fetch_response(label, prompt)
         except Exception as e:
             print(f"Error for {label}: {e}")
-    return buf.getvalue().strip()
+    end_real = pytime.time()
+    end_usage = resource.getrusage(resource.RUSAGE_SELF)
+    real = end_real - start_real
+    user = end_usage.ru_utime - start_usage.ru_utime
+    sys_ = end_usage.ru_stime - start_usage.ru_stime
+    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s"
+    return timing, buf.getvalue().strip()
 
-def run_local_ollama(prompt):
+def run_local_ollama_with_time(prompt):
     from io import StringIO
     import contextlib
+    import time as pytime
     buf = StringIO()
+    start_real = pytime.time()
+    start_usage = resource.getrusage(resource.RUSAGE_SELF)
     with contextlib.redirect_stdout(buf):
         try:
             ask_llm.ask_ollama_local(prompt)
         except Exception as e:
             print(f"Error for local ollama: {e}")
-    return buf.getvalue().strip()
+    end_real = pytime.time()
+    end_usage = resource.getrusage(resource.RUSAGE_SELF)
+    real = end_real - start_real
+    user = end_usage.ru_utime - start_usage.ru_utime
+    sys_ = end_usage.ru_stime - start_usage.ru_stime
+    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s"
+    return timing, buf.getvalue().strip()
 
 @app.route('/run_llms', methods=['POST'])
 def run_llms():
     data = request.get_json()
     prompt = data.get('prompt', '').strip()
     results = {}
+    timings = {}
     local_result = None
+    local_timing = None
     if prompt:
         for label in LLM_PROVIDERS:
-            results[label] = run_llm(label, prompt)
-        local_result = run_local_ollama(prompt)
-    return jsonify({'results': results, 'local_result': local_result})
+            timing, result = run_llm_with_time(label, prompt)
+            results[label] = result
+            timings[label] = timing
+        local_timing, local_result = run_local_ollama_with_time(prompt)
+    return jsonify({'results': results, 'timings': timings, 'local_result': local_result, 'local_timing': local_timing})
 
 @app.route('/', methods=['GET'])
 def index():
-    return render_template_string(HTML_TEMPLATE, results=None, prompt='')
+    return render_template_string(HTML_TEMPLATE, results=None, prompt='', timings={}, local_timing=None)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
