@@ -8,7 +8,9 @@ import sys
 import os
 import importlib.util
 from pathlib import Path
-from flask import Flask, render_template_string, request
+from flask import Flask, render_template_string, request, jsonify
+import threading
+import time
 
 # Dynamically import ask_llm.py
 ask_llm_path = Path(__file__).parent / 'ask_llm.py'
@@ -35,15 +37,49 @@ HTML_TEMPLATE = '''
         button { background: #1a2b4c; color: #fff; border: none; border-radius: 4px; padding: 0.5em 1.5em; font-size: 1em; cursor: pointer; }
         button:hover { background: #27406b; }
         label { color: #fff; }
+        #progress { margin: 1em 0; font-size: 1.1em; color: #ff0; }
     </style>
+    <script>
+    function submitPrompt(event) {
+        event.preventDefault();
+        document.getElementById('progress').innerText = 'Working...';
+        document.getElementById('results').innerHTML = '';
+        var prompt = document.getElementById('prompt').value;
+        fetch('/run_llms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: prompt })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('progress').innerText = '';
+            let html = '';
+            for (const [label, result] of Object.entries(data.results)) {
+                html += `<div class=\"llm-result\"><div class=\"llm-label\">${label}</div><pre>${result}</pre></div>`;
+            }
+            if (data.local_result) {
+                html += `<div class=\"llm-result\" style=\"background:#1a2b4c;\"><div class=\"llm-label\">LOCAL (Ollama)</div><pre>${data.local_result}</pre></div>`;
+            }
+            document.getElementById('results').innerHTML = html;
+        });
+        // Simulate progress
+        let dots = 0;
+        let interval = setInterval(() => {
+            if (document.getElementById('progress').innerText === '') { clearInterval(interval); return; }
+            document.getElementById('progress').innerText = 'Working' + '.'.repeat((dots++ % 4) + 1);
+        }, 500);
+    }
+    </script>
 </head>
 <body>
     <h1>LLM Multi-Provider Results</h1>
-    <form method="post" class="prompt-form">
+    <form method="post" class="prompt-form" onsubmit="submitPrompt(event)">
         <label for="prompt">Enter your prompt:</label><br>
         <textarea name="prompt" id="prompt">{{ prompt|default('') }}</textarea><br>
         <button type="submit">Run on all LLMs</button>
     </form>
+    <div id="progress"></div>
+    <div id="results">
     {% if results %}
         {% for label, result in results.items() %}
             <div class="llm-result">
@@ -58,6 +94,7 @@ HTML_TEMPLATE = '''
             </div>
         {% endif %}
     {% endif %}
+    </div>
 </body>
 </html>
 '''
@@ -84,18 +121,21 @@ def run_local_ollama(prompt):
             print(f"Error for local ollama: {e}")
     return buf.getvalue().strip()
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
+@app.route('/run_llms', methods=['POST'])
+def run_llms():
+    data = request.get_json()
+    prompt = data.get('prompt', '').strip()
     results = {}
-    prompt = ''
     local_result = None
-    if request.method == 'POST':
-        prompt = request.form.get('prompt', '').strip()
-        if prompt:
-            for label in LLM_PROVIDERS:
-                results[label] = run_llm(label, prompt)
-            local_result = run_local_ollama(prompt)
-    return render_template_string(HTML_TEMPLATE, results=results, prompt=prompt, local_result=local_result)
+    if prompt:
+        for label in LLM_PROVIDERS:
+            results[label] = run_llm(label, prompt)
+        local_result = run_local_ollama(prompt)
+    return jsonify({'results': results, 'local_result': local_result})
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template_string(HTML_TEMPLATE, results=None, prompt='')
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
