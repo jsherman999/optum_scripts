@@ -24,6 +24,94 @@ fetch_response = ask_llm.fetch_response
 
 app = Flask(__name__)
 
+try:
+    import tiktoken
+    def count_tokens(prompt, model="gpt-3.5-turbo"):
+        enc = tiktoken.encoding_for_model(model)
+        return len(enc.encode(prompt))
+except ImportError:
+    def count_tokens(prompt, model=None):
+        # Fallback: estimate 1 token per 4 chars (very rough)
+        return max(1, len(prompt) // 4)
+import time as pytime
+import logging
+
+LOG_PATH = "/var/log/run_llms_web.log"
+logging.basicConfig(filename=LOG_PATH, level=logging.INFO, format='%(message)s')
+
+def log_run(llm_name, real, user, sys_, token_count):
+    epoch = int(pytime.time())
+    log_line = f"{llm_name},{real:.2f},{user:.2f},{sys_:.2f},{token_count},{epoch}"
+    try:
+        logging.info(log_line)
+    except Exception:
+        pass
+
+def run_llm_with_time(label, prompt):
+    from io import StringIO
+    import contextlib
+    buf = StringIO()
+    start_real = pytime.time()
+    start_usage = resource.getrusage(resource.RUSAGE_SELF)
+    with contextlib.redirect_stdout(buf):
+        try:
+            fetch_response(label, prompt)
+        except Exception as e:
+            print(f"Error for {label}: {e}")
+    end_real = pytime.time()
+    end_usage = resource.getrusage(resource.RUSAGE_SELF)
+    real = end_real - start_real
+    user = end_usage.ru_utime - start_usage.ru_utime
+    sys_ = end_usage.ru_stime - start_usage.ru_stime
+    token_count = count_tokens(prompt)
+    log_run(label, real, user, sys_, token_count)
+    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
+    return timing, buf.getvalue().strip(), token_count
+
+def run_local_ollama_with_time(prompt):
+    from io import StringIO
+    import contextlib
+    buf = StringIO()
+    start_real = pytime.time()
+    start_usage = resource.getrusage(resource.RUSAGE_SELF)
+    with contextlib.redirect_stdout(buf):
+        try:
+            ask_llm.ask_ollama_local(prompt)
+        except Exception as e:
+            print(f"Error for local ollama: {e}")
+    end_real = pytime.time()
+    end_usage = resource.getrusage(resource.RUSAGE_SELF)
+    real = end_real - start_real
+    user = end_usage.ru_utime - start_usage.ru_utime
+    sys_ = end_usage.ru_stime - start_usage.ru_stime
+    token_count = count_tokens(prompt)
+    log_run("local", real, user, sys_, token_count)
+    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
+    return timing, buf.getvalue().strip(), token_count
+
+@app.route('/run_llms', methods=['POST'])
+def run_llms():
+    data = request.get_json()
+    prompt = data.get('prompt', '').strip()
+    results = {}
+    timings = {}
+    token_counts = {}
+    local_result = None
+    local_timing = None
+    local_token_count = None
+    if prompt:
+        for label in LLM_PROVIDERS:
+            timing, result, token_count = run_llm_with_time(label, prompt)
+            results[label] = result
+            timings[label] = timing
+            token_counts[label] = token_count
+        local_timing, local_result, local_token_count = run_local_ollama_with_time(prompt)
+    return jsonify({'results': results, 'timings': timings, 'token_counts': token_counts, 'local_result': local_result, 'local_timing': local_timing, 'local_token_count': local_token_count})
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template_string(HTML_TEMPLATE, results=None, prompt='', timings={}, local_timing=None)
+
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html>
@@ -129,7 +217,6 @@ HTML_TEMPLATE = '''
 def run_llm_with_time(label, prompt):
     from io import StringIO
     import contextlib
-    import time as pytime
     buf = StringIO()
     start_real = pytime.time()
     start_usage = resource.getrusage(resource.RUSAGE_SELF)
@@ -143,13 +230,14 @@ def run_llm_with_time(label, prompt):
     real = end_real - start_real
     user = end_usage.ru_utime - start_usage.ru_utime
     sys_ = end_usage.ru_stime - start_usage.ru_stime
-    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s"
-    return timing, buf.getvalue().strip()
+    token_count = count_tokens(prompt)
+    log_run(label, real, user, sys_, token_count)
+    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
+    return timing, buf.getvalue().strip(), token_count
 
 def run_local_ollama_with_time(prompt):
     from io import StringIO
     import contextlib
-    import time as pytime
     buf = StringIO()
     start_real = pytime.time()
     start_usage = resource.getrusage(resource.RUSAGE_SELF)
@@ -163,8 +251,10 @@ def run_local_ollama_with_time(prompt):
     real = end_real - start_real
     user = end_usage.ru_utime - start_usage.ru_utime
     sys_ = end_usage.ru_stime - start_usage.ru_stime
-    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s"
-    return timing, buf.getvalue().strip()
+    token_count = count_tokens(prompt)
+    log_run("local", real, user, sys_, token_count)
+    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
+    return timing, buf.getvalue().strip(), token_count
 
 @app.route('/run_llms', methods=['POST'])
 def run_llms():
@@ -172,15 +262,18 @@ def run_llms():
     prompt = data.get('prompt', '').strip()
     results = {}
     timings = {}
+    token_counts = {}
     local_result = None
     local_timing = None
+    local_token_count = None
     if prompt:
         for label in LLM_PROVIDERS:
-            timing, result = run_llm_with_time(label, prompt)
+            timing, result, token_count = run_llm_with_time(label, prompt)
             results[label] = result
             timings[label] = timing
-        local_timing, local_result = run_local_ollama_with_time(prompt)
-    return jsonify({'results': results, 'timings': timings, 'local_result': local_result, 'local_timing': local_timing})
+            token_counts[label] = token_count
+        local_timing, local_result, local_token_count = run_local_ollama_with_time(prompt)
+    return jsonify({'results': results, 'timings': timings, 'token_counts': token_counts, 'local_result': local_result, 'local_timing': local_timing, 'local_token_count': local_token_count})
 
 @app.route('/', methods=['GET'])
 def index():
