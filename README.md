@@ -51,7 +51,7 @@ ollama run llama3:3b
 Notes on environmental variables and keys needed:
 -------------------------------------------------
 
-On Linux, create .llm_env for example with these API keys set, and ". ./.llm_env"  (next ver: source in that file if it exists)
+Have these env variables set in your login env, and/or create .llm_config in same dir as ask_llm.py script with these API keys set
 
 export OPENAI_API_KEY=...
 export GOOGLE_API_KEY=...
