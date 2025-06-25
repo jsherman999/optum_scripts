@@ -31,7 +31,7 @@ HTML_TEMPLATE = '''
     <title>LLM Multi-Provider Results</title>
     <style>
         body { background: #0a1833; color: #fff; font-family: Arial, sans-serif; margin: 2em; }
-        .llm-result { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 2em; padding: 1em; background: #172a4a; }
+        .llm-result { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 2em; padding: 1em; background: #172a4a; position: relative; }
         .llm-label { font-weight: bold; font-size: 1.2em; margin-bottom: 0.5em; }
         .llm-timing { border: 1px solid #ff0; border-radius: 6px; background: #222a44; color: #ff0; padding: 0.3em 0.8em; margin-bottom: 0.7em; display: inline-block; font-family: monospace; font-size: 1em; }
         textarea, input[type="text"] { width: 100%; height: 80px; background: #fff; color: #000; border-radius: 4px; border: 1px solid #888; padding: 0.5em; }
@@ -40,6 +40,8 @@ HTML_TEMPLATE = '''
         button:hover { background: #27406b; }
         label { color: #fff; }
         #progress { margin: 1em 0; font-size: 1.1em; color: #ff0; }
+        .copy-btn { position: absolute; top: 1em; right: 1em; background: #ff0; color: #222a44; border: none; border-radius: 4px; padding: 0.2em 0.8em; font-size: 0.95em; cursor: pointer; }
+        .copy-btn:hover { background: #ffe066; }
     </style>
     <script>
     function submitPrompt(event) {
@@ -56,12 +58,16 @@ HTML_TEMPLATE = '''
         .then(data => {
             document.getElementById('progress').innerText = '';
             let html = '';
+            let idx = 0;
             for (const [label, result] of Object.entries(data.results)) {
                 let timing = data.timings[label] || '';
-                html += `<div class=\"llm-result\"><div class=\"llm-label\">${label}</div><div class=\"llm-timing\">${timing}</div><pre>${result}</pre></div>`;
+                let boxId = `llm-output-${idx}`;
+                html += `<div class=\"llm-result\"><div class=\"llm-label\">${label}</div><div class=\"llm-timing\">${timing}</div><button class=\"copy-btn\" onclick=\"copyToClipboard('${boxId}')\">Copy</button><pre id=\"${boxId}\">${escapeHtml(result)}</pre></div>`;
+                idx++;
             }
             if (data.local_result) {
-                html += `<div class=\"llm-result\" style=\"background:#1a2b4c;\"><div class=\"llm-label\">LOCAL (Ollama)</div><div class=\"llm-timing\">${data.local_timing || ''}</div><pre>${data.local_result}</pre></div>`;
+                let boxId = `llm-output-local`;
+                html += `<div class=\"llm-result\" style=\"background:#1a2b4c;\"><div class=\"llm-label\">LOCAL (Ollama)</div><div class=\"llm-timing\">${data.local_timing || ''}</div><button class=\"copy-btn\" onclick=\"copyToClipboard('${boxId}')\">Copy</button><pre id=\"${boxId}\">${escapeHtml(data.local_result)}</pre></div>`;
             }
             document.getElementById('results').innerHTML = html;
         });
@@ -71,6 +77,20 @@ HTML_TEMPLATE = '''
             if (document.getElementById('progress').innerText === '') { clearInterval(interval); return; }
             document.getElementById('progress').innerText = 'Working' + '.'.repeat((dots++ % 4) + 1);
         }, 500);
+    }
+    function copyToClipboard(elementId) {
+        var text = document.getElementById(elementId).innerText;
+        navigator.clipboard.writeText(text).then(function() {
+            // Optionally show a message
+        }, function(err) {
+            alert('Failed to copy: ' + err);
+        });
+    }
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>"']/g, function(m) {
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+        });
     }
     </script>
 </head>
@@ -88,14 +108,16 @@ HTML_TEMPLATE = '''
             <div class="llm-result">
                 <div class="llm-label">{{ label }}</div>
                 <div class="llm-timing">{{ timings[label] }}</div>
-                <pre>{{ result }}</pre>
+                <button class="copy-btn" onclick="copyToClipboard('llm-output-{{ loop.index0 }}')">Copy</button>
+                <pre id="llm-output-{{ loop.index0 }}">{{ result }}</pre>
             </div>
         {% endfor %}
         {% if local_result %}
             <div class="llm-result" style="background:#1a2b4c;">
                 <div class="llm-label">LOCAL (Ollama)</div>
                 <div class="llm-timing">{{ local_timing }}</div>
-                <pre>{{ local_result }}</pre>
+                <button class="copy-btn" onclick="copyToClipboard('llm-output-local')">Copy</button>
+                <pre id="llm-output-local">{{ local_result }}</pre>
             </div>
         {% endif %}
     {% endif %}
