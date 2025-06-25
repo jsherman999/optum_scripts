@@ -27,11 +27,14 @@ HTML_TEMPLATE = '''
 <head>
     <title>LLM Multi-Provider Results</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 2em; }
-        .llm-result { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 2em; padding: 1em; }
+        body { background: #0a1833; color: #fff; font-family: Arial, sans-serif; margin: 2em; }
+        .llm-result { border: 1px solid #ccc; border-radius: 8px; margin-bottom: 2em; padding: 1em; background: #172a4a; }
         .llm-label { font-weight: bold; font-size: 1.2em; margin-bottom: 0.5em; }
-        textarea { width: 100%; height: 80px; }
+        textarea, input[type="text"] { width: 100%; height: 80px; background: #fff; color: #000; border-radius: 4px; border: 1px solid #888; padding: 0.5em; }
         .prompt-form { margin-bottom: 2em; }
+        button { background: #1a2b4c; color: #fff; border: none; border-radius: 4px; padding: 0.5em 1.5em; font-size: 1em; cursor: pointer; }
+        button:hover { background: #27406b; }
+        label { color: #fff; }
     </style>
 </head>
 <body>
@@ -48,6 +51,12 @@ HTML_TEMPLATE = '''
                 <pre>{{ result }}</pre>
             </div>
         {% endfor %}
+        {% if local_result %}
+            <div class="llm-result" style="background:#1a2b4c;">
+                <div class="llm-label">LOCAL (Ollama)</div>
+                <pre>{{ local_result }}</pre>
+            </div>
+        {% endif %}
     {% endif %}
 </body>
 </html>
@@ -64,16 +73,29 @@ def run_llm(label, prompt):
             print(f"Error for {label}: {e}")
     return buf.getvalue().strip()
 
+def run_local_ollama(prompt):
+    from io import StringIO
+    import contextlib
+    buf = StringIO()
+    with contextlib.redirect_stdout(buf):
+        try:
+            ask_llm.ask_ollama_local(prompt)
+        except Exception as e:
+            print(f"Error for local ollama: {e}")
+    return buf.getvalue().strip()
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     results = {}
     prompt = ''
+    local_result = None
     if request.method == 'POST':
         prompt = request.form.get('prompt', '').strip()
         if prompt:
             for label in LLM_PROVIDERS:
                 results[label] = run_llm(label, prompt)
-    return render_template_string(HTML_TEMPLATE, results=results, prompt=prompt)
+            local_result = run_local_ollama(prompt)
+    return render_template_string(HTML_TEMPLATE, results=results, prompt=prompt, local_result=local_result)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
