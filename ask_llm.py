@@ -90,7 +90,6 @@ def ask_ollama_local(prompt):
 def main():
     parser = argparse.ArgumentParser(description="Query a public LLM or local Ollama server.")
     parser.add_argument('-H', '--host', help="LLM provider label (chatgpt, gemini, claude)")
-    parser.add_argument('--local', action='store_true', help="Use local Ollama server instead")
     parser.add_argument('--file', help="Path to a file containing the prompt")
     parser.add_argument('question', nargs='*', help="Prompt text (if no --file or stdin)")
     args = parser.parse_args()
@@ -108,12 +107,12 @@ def main():
         print("Provide a prompt via --file, arguments, or stdin.")
         sys.exit(1)
 
-    if args.local:
+    if args.host and args.host.lower() == "local":
         ask_ollama_local(prompt)
     elif args.host:
         fetch_response(args.host.lower(), prompt)
     else:
-        print("Error: Specify either --local or -H <provider>.")
+        print("Error: Specify -H local or -H <provider>")
         sys.exit(1)
 
 if __name__ == "__main__":
