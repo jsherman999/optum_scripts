@@ -6,6 +6,15 @@ import json
 import sys
 import os
 
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .llm_config if it exists in the script's directory
+config_path = Path(__file__).resolve().parent / ".llm_config"
+if config_path.exists():
+    load_dotenv(dotenv_path=config_path, override=False)
+
+
 LLM_PROVIDERS = {
     "chatgpt": {
         "url": "https://api.openai.com/v1/chat/completions",
@@ -106,6 +115,21 @@ def main():
     else:
         print("Provide a prompt via --file, arguments, or stdin.")
         sys.exit(1)
+
+    # Validate required API keys
+    REQUIRED_KEYS = {
+        "chatgpt": "OPENAI_API_KEY",
+        "gemini": "GOOGLE_API_KEY",
+        "claude": "ANTHROPIC_API_KEY"
+    }
+
+    if args.host:
+        label = args.host.lower()
+        required_key = REQUIRED_KEYS.get(label)
+        if required_key and not os.getenv(required_key):
+            print(f"Missing required environment variable: {required_key}")
+            print(f"Set it in your shell or in .llm_config in the script directory.")
+            sys.exit(1)
 
     if args.host and args.host.lower() == "local":
         ask_ollama_local(prompt)
