@@ -12,6 +12,7 @@ from flask import Flask, render_template_string, request, jsonify
 import threading
 import time
 import resource
+import json as pyjson
 
 # Dynamically import ask_llm.py
 ask_llm_path = Path(__file__).parent / 'ask_llm.py'
@@ -37,6 +38,7 @@ import time as pytime
 import logging
 
 LOG_PATH = "/var/log/run_llms_web.log"
+PROMPT_LOG_PATH = "/var/log/run_llms_web_prompts.jsonl"
 logging.basicConfig(filename=LOG_PATH, level=logging.INFO, format='%(message)s')
 
 def log_run(llm_name, real, user, sys_, token_count):
@@ -44,6 +46,23 @@ def log_run(llm_name, real, user, sys_, token_count):
     log_line = f"{llm_name},{real:.2f},{user:.2f},{sys_:.2f},{token_count},{epoch}"
     try:
         logging.info(log_line)
+    except Exception:
+        pass
+
+def log_prompt(llm_name, prompt, real, user, sys_, token_count):
+    epoch = int(pytime.time())
+    log_entry = {
+        "llm": llm_name,
+        "prompt": prompt,
+        "real": real,
+        "user": user,
+        "sys": sys_,
+        "tokens": token_count,
+        "epoch": epoch
+    }
+    try:
+        with open(PROMPT_LOG_PATH, 'a') as f:
+            f.write(pyjson.dumps(log_entry) + "\n")
     except Exception:
         pass
 
@@ -65,6 +84,7 @@ def run_llm_with_time(label, prompt):
     sys_ = end_usage.ru_stime - start_usage.ru_stime
     token_count = count_tokens(prompt)
     log_run(label, real, user, sys_, token_count)
+    log_prompt(label, prompt, real, user, sys_, token_count)
     timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
     return timing, buf.getvalue().strip(), token_count
 
@@ -86,6 +106,7 @@ def run_local_ollama_with_time(prompt):
     sys_ = end_usage.ru_stime - start_usage.ru_stime
     token_count = count_tokens(prompt)
     log_run("local", real, user, sys_, token_count)
+    log_prompt("local", prompt, real, user, sys_, token_count)
     timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
     return timing, buf.getvalue().strip(), token_count
 
@@ -189,21 +210,23 @@ HTML_TEMPLATE = '''
             document.getElementById('stats-panel').style.display = 'block';
             let ctx = document.getElementById('stats-chart').getContext('2d');
             if(window.statsChart) window.statsChart.destroy();
+            let chartData = data.chart;
+            let details = data.details;
             // Collect all unique token counts
             let tokenSet = new Set();
-            for(const llm in data) {
-                for(const pt of data[llm]) {
+            for(const llm in chartData) {
+                for(const pt of chartData[llm]) {
                     tokenSet.add(pt.tokens);
                 }
             }
             let allTokens = Array.from(tokenSet).sort((a,b)=>a-b);
-            // Build datasets for stacked bar
+            // Build datasets for stacked bar (average real time)
             let colors = ['#ff6384','#36a2eb','#ffce56','#4bc0c0','#9966ff','#ff9f40'];
             let datasets = [];
             let idx = 0;
-            for(const llm in data) {
+            for(const llm in chartData) {
                 let barData = allTokens.map(tok => {
-                    let found = data[llm].find(pt => pt.tokens === tok);
+                    let found = chartData[llm].find(pt => pt.tokens == tok);
                     return found ? found.real : 0;
                 });
                 datasets.push({
@@ -224,9 +247,30 @@ HTML_TEMPLATE = '''
                 options: {
                     plugins: { legend: { labels: { color: '#fff' } } },
                     responsive: true,
+                    onClick: function(evt, elements) {
+                        if (elements.length > 0) {
+                            let chart = elements[0].element.$context.raw;
+                            let tokenIdx = elements[0].index;
+                            let tokenVal = allTokens[tokenIdx];
+                            let html = '';
+                            for(const llm in chartData) {
+                                let key = `[\"${llm}\",${tokenVal}]`;
+                                let entries = details[key] || [];
+                                if(entries.length > 0) {
+                                    html += `<div style='margin-bottom:0.5em;'><b>${llm} (tokens: ${tokenVal})</b><ul style='font-size:0.8em;'>`;
+                                    for(const entry of entries) {
+                                        html += `<li>real: ${entry.real}s<br>prompt: <span style='font-family:monospace;'>${escapeHtml(entry.prompt)}</span></li>`;
+                                    }
+                                    html += '</ul></div>';
+                                }
+                            }
+                            document.getElementById('bar-details').innerHTML = html;
+                            document.getElementById('bar-details').style.display = 'block';
+                        }
+                    },
                     scales: {
                         x: { title: { display: true, text: 'Tokens', color: '#fff' }, ticks: { color: '#fff' }, stacked: true },
-                        y: { title: { display: true, text: 'Real Time (s)', color: '#fff' }, ticks: { color: '#fff' }, stacked: true }
+                        y: { title: { display: true, text: 'Avg Real Time (s)', color: '#fff' }, ticks: { color: '#fff' }, stacked: true }
                     }
                 }
             });
@@ -265,6 +309,7 @@ HTML_TEMPLATE = '''
     </div>
     <div id="stats-panel">
         <canvas id="stats-chart" width="800" height="400"></canvas>
+        <div id="bar-details" style="display:none; background:#222a44; color:#fff; border-radius:8px; margin-top:1em; padding:1em;"></div>
     </div>
 </body>
 </html>
@@ -272,8 +317,9 @@ HTML_TEMPLATE = '''
 
 @app.route('/stats')
 def stats():
-    # Parse the log file and return JSON for plotting
+    # Parse the log file and return JSON for plotting and for click details
     stats_data = {}
+    prompt_details = {}
     try:
         with open(LOG_PATH, 'r') as f:
             for line in f:
@@ -284,11 +330,37 @@ def stats():
                 real = float(real)
                 tokens = int(tokens)
                 if llm not in stats_data:
-                    stats_data[llm] = []
-                stats_data[llm].append({'tokens': tokens, 'real': real})
+                    stats_data[llm] = {}
+                if tokens not in stats_data[llm]:
+                    stats_data[llm][tokens] = []
+                stats_data[llm][tokens].append(real)
+        # Compute averages
+        for llm in stats_data:
+            for tokens in stats_data[llm]:
+                avg_real = sum(stats_data[llm][tokens]) / len(stats_data[llm][tokens])
+                stats_data[llm][tokens] = avg_real
+        # Load prompt details
+        with open(PROMPT_LOG_PATH, 'r') as f:
+            for line in f:
+                try:
+                    entry = pyjson.loads(line)
+                    llm = entry['llm']
+                    tokens = entry['tokens']
+                    if (llm, tokens) not in prompt_details:
+                        prompt_details[(llm, tokens)] = []
+                    prompt_details[(llm, tokens)].append(entry)
+                except Exception:
+                    continue
     except Exception:
         pass
-    return jsonify(stats_data)
+    # Format for chart.js: {llm: [{tokens: t, real: avg}, ...]}
+    chart_data = {}
+    for llm in stats_data:
+        chart_data[llm] = []
+        for tokens in sorted(stats_data[llm]):
+            chart_data[llm].append({'tokens': tokens, 'real': stats_data[llm][tokens]})
+    # Prompt details: {(llm, tokens): [entry, ...]}
+    return jsonify({'chart': chart_data, 'details': prompt_details})
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
