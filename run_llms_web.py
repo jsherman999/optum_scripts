@@ -12,7 +12,6 @@ from flask import Flask, render_template_string, request, jsonify
 import threading
 import time
 import resource
-import json as pyjson
 
 # Dynamically import ask_llm.py
 ask_llm_path = Path(__file__).parent / 'ask_llm.py'
@@ -38,7 +37,6 @@ import time as pytime
 import logging
 
 LOG_PATH = "/var/log/run_llms_web.log"
-PROMPT_LOG_PATH = "/var/log/run_llms_web_prompts.jsonl"
 logging.basicConfig(filename=LOG_PATH, level=logging.INFO, format='%(message)s')
 
 def log_run(llm_name, real, user, sys_, token_count):
@@ -46,23 +44,6 @@ def log_run(llm_name, real, user, sys_, token_count):
     log_line = f"{llm_name},{real:.2f},{user:.2f},{sys_:.2f},{token_count},{epoch}"
     try:
         logging.info(log_line)
-    except Exception:
-        pass
-
-def log_prompt(llm_name, prompt, real, user, sys_, token_count):
-    epoch = int(pytime.time())
-    log_entry = {
-        "llm": llm_name,
-        "prompt": prompt,
-        "real": real,
-        "user": user,
-        "sys": sys_,
-        "tokens": token_count,
-        "epoch": epoch
-    }
-    try:
-        with open(PROMPT_LOG_PATH, 'a') as f:
-            f.write(pyjson.dumps(log_entry) + "\n")
     except Exception:
         pass
 
@@ -84,7 +65,6 @@ def run_llm_with_time(label, prompt):
     sys_ = end_usage.ru_stime - start_usage.ru_stime
     token_count = count_tokens(prompt)
     log_run(label, real, user, sys_, token_count)
-    log_prompt(label, prompt, real, user, sys_, token_count)
     timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
     return timing, buf.getvalue().strip(), token_count
 
@@ -106,7 +86,6 @@ def run_local_ollama_with_time(prompt):
     sys_ = end_usage.ru_stime - start_usage.ru_stime
     token_count = count_tokens(prompt)
     log_run("local", real, user, sys_, token_count)
-    log_prompt("local", prompt, real, user, sys_, token_count)
     timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
     return timing, buf.getvalue().strip(), token_count
 
@@ -129,12 +108,8 @@ def run_llms():
         local_timing, local_result, local_token_count = run_local_ollama_with_time(prompt)
     return jsonify({'results': results, 'timings': timings, 'token_counts': token_counts, 'local_result': local_result, 'local_timing': local_timing, 'local_token_count': local_token_count})
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def index():
-    # If POST, redirect to GET to avoid method not allowed
-    if request.method == 'POST':
-        from flask import redirect, url_for
-        return redirect(url_for('index'))
     return render_template_string(HTML_TEMPLATE, results=None, prompt='', timings={}, local_timing=None)
 
 HTML_TEMPLATE = '''
@@ -157,43 +132,8 @@ HTML_TEMPLATE = '''
         .copy-btn:hover { background: #ffe066; }
         #stats-panel { display: none; background: #101c33; border: 2px solid #ffe066; border-radius: 10px; margin-top: 2em; padding: 1em; }
     </style>
-</head>
-<body>
-    <h1>LLM Multi-Provider Results</h1>
-    <form method="post" class="prompt-form" onsubmit="submitPrompt(event)">
-        <label for="prompt">Enter your prompt:</label><br>
-        <textarea name="prompt" id="prompt">{{ prompt|default('') }}</textarea><br>
-        <button type="submit">Run on all LLMs</button>
-    </form>
-    <button type="button" onclick="showStats()" style="margin-bottom:1em;">Show Stats</button>
-    <div id="progress"></div>
-    <div id="results">
-    {% if results %}
-        {% for label, result in results.items() %}
-            <div class="llm-result">
-                <div class="llm-label">{{ label }}</div>
-                <div class="llm-timing">{{ timings[label] }}</div>
-                <button class="copy-btn" onclick="copyToClipboard('llm-output-{{ loop.index0 }}')">Copy</button>
-                <pre id="llm-output-{{ loop.index0 }}">{{ result }}</pre>
-            </div>
-        {% endfor %}
-        {% if local_result %}
-            <div class="llm-result" style="background:#1a2b4c;">
-                <div class="llm-label">LOCAL (Ollama)</div>
-                <div class="llm-timing">{{ local_timing }}</div>
-                <button class="copy-btn" onclick="copyToClipboard('llm-output-local')">Copy</button>
-                <pre id="llm-output-local">{{ local_result }}</pre>
-            </div>
-        {% endif %}
-    {% endif %}
-    </div>
-    <div id="stats-panel">
-        <canvas id="stats-chart" width="800" height="400"></canvas>
-        <div id="bar-details" style="display:none; background:#222a44; color:#fff; border-radius:8px; margin-top:1em; padding:1em;"></div>
-    </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-    // All JS functions are defined globally so they are always available
     function submitPrompt(event) {
         event.preventDefault();
         document.getElementById('progress').innerText = 'Working...';
@@ -239,7 +179,7 @@ HTML_TEMPLATE = '''
     function escapeHtml(text) {
         if (!text) return '';
         return text.replace(/[&<>"']/g, function(m) {
-            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m];
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
         });
     }
     function showStats() {
@@ -249,23 +189,21 @@ HTML_TEMPLATE = '''
             document.getElementById('stats-panel').style.display = 'block';
             let ctx = document.getElementById('stats-chart').getContext('2d');
             if(window.statsChart) window.statsChart.destroy();
-            let chartData = data.chart;
-            let details = data.details;
             // Collect all unique token counts
             let tokenSet = new Set();
-            for(const llm in chartData) {
-                for(const pt of chartData[llm]) {
+            for(const llm in data) {
+                for(const pt of data[llm]) {
                     tokenSet.add(pt.tokens);
                 }
             }
             let allTokens = Array.from(tokenSet).sort((a,b)=>a-b);
-            // Build datasets for stacked bar (average real time)
+            // Build datasets for stacked bar
             let colors = ['#ff6384','#36a2eb','#ffce56','#4bc0c0','#9966ff','#ff9f40'];
             let datasets = [];
             let idx = 0;
-            for(const llm in chartData) {
+            for(const llm in data) {
                 let barData = allTokens.map(tok => {
-                    let found = chartData[llm].find(pt => pt.tokens == tok);
+                    let found = data[llm].find(pt => pt.tokens === tok);
                     return found ? found.real : 0;
                 });
                 datasets.push({
@@ -286,74 +224,56 @@ HTML_TEMPLATE = '''
                 options: {
                     plugins: { legend: { labels: { color: '#fff' } } },
                     responsive: true,
-                    onClick: function(evt, elements) {
-                        if (elements.length > 0) {
-                            let chart = elements[0].element.$context.raw;
-                            let tokenIdx = elements[0].index;
-                            let tokenVal = allTokens[tokenIdx];
-                            let html = '';
-                            for(const llm in chartData) {
-                                let key = `[\"${llm}\",${tokenVal}]`;
-                                let entries = details[key] || [];
-                                if(entries.length > 0) {
-                                    html += `<div style='margin-bottom:0.5em;'><b>${llm} (tokens: ${tokenVal})</b><ul style='font-size:0.8em;'>`;
-                                    for(const entry of entries) {
-                                        html += `<li>real: ${entry.real}s<br>prompt: <span style='font-family:monospace;'>${escapeHtml(entry.prompt)}</span></li>`;
-                                    }
-                                    html += '</ul></div>';
-                                }
-                            }
-                            document.getElementById('bar-details').innerHTML = html;
-                            document.getElementById('bar-details').style.display = 'block';
-                        }
-                    },
-                    onHover: function(evt, elements) {
-                        // Prevent default context menu on right click
-                        document.getElementById('stats-chart').oncontextmenu = function(e) { e.preventDefault(); };
-                    },
                     scales: {
                         x: { title: { display: true, text: 'Tokens', color: '#fff' }, ticks: { color: '#fff' }, stacked: true },
-                        y: { title: { display: true, text: 'Avg Real Time (s)', color: '#fff' }, ticks: { color: '#fff' }, stacked: true }
+                        y: { title: { display: true, text: 'Real Time (s)', color: '#fff' }, ticks: { color: '#fff' }, stacked: true }
                     }
                 }
-            });
-            // Add right click handler for bar
-            document.getElementById('stats-chart').addEventListener('contextmenu', function(e) {
-                let points = window.statsChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
-                if(points.length > 0) {
-                    let point = points[0];
-                    let datasetIndex = point.datasetIndex;
-                    let tokenIdx = point.index;
-                    let llm = window.statsChart.data.datasets[datasetIndex].label;
-                    let tokenVal = allTokens[tokenIdx];
-                    let key = '["' + llm + '",' + tokenVal + ']';
-                    let entries = details[key] || [];
-                    if(entries.length > 0) {
-                        // Sort by real time
-                        entries.sort((a, b) => a.real - b.real);
-                        let html = `<div style='margin-bottom:0.5em;'><b>${llm} (tokens: ${tokenVal})</b><table style='font-size:0.8em; color:#fff; background:#222a44; border-radius:8px;'><tr><th>LLM</th><th>Tokens</th><th>Real Time (s)</th><th>Prompt</th></tr>`;
-                        for(const entry of entries) {
-                            html += `<tr><td>${entry.llm}</td><td>${entry.tokens}</td><td>${entry.real}</td><td style='max-width:400px;overflow-x:auto;white-space:pre;font-family:monospace;'>${escapeHtml(entry.prompt)}</td></tr>`;
-                        }
-                        html += '</table></div>';
-                        document.getElementById('bar-details').innerHTML = html;
-                        document.getElementById('bar-details').style.display = 'block';
-                    }
-                }
-                e.preventDefault();
             });
         });
     }
     </script>
+</head>
+<body>
+    <h1>LLM Multi-Provider Results</h1>
+    <form method="post" class="prompt-form" onsubmit="submitPrompt(event)">
+        <label for="prompt">Enter your prompt:</label><br>
+        <textarea name="prompt" id="prompt">{{ prompt|default('') }}</textarea><br>
+        <button type="submit">Run on all LLMs</button>
+    </form>
+    <button onclick="showStats()" style="margin-bottom:1em;">Show Stats</button>
+    <div id="progress"></div>
+    <div id="results">
+    {% if results %}
+        {% for label, result in results.items() %}
+            <div class="llm-result">
+                <div class="llm-label">{{ label }}</div>
+                <div class="llm-timing">{{ timings[label] }}</div>
+                <button class="copy-btn" onclick="copyToClipboard('llm-output-{{ loop.index0 }}')">Copy</button>
+                <pre id="llm-output-{{ loop.index0 }}">{{ result }}</pre>
+            </div>
+        {% endfor %}
+        {% if local_result %}
+            <div class="llm-result" style="background:#1a2b4c;">
+                <div class="llm-label">LOCAL (Ollama)</div>
+                <div class="llm-timing">{{ local_timing }}</div>
+                <button class="copy-btn" onclick="copyToClipboard('llm-output-local')">Copy</button>
+                <pre id="llm-output-local">{{ local_result }}</pre>
+            </div>
+        {% endif %}
+    {% endif %}
+    </div>
+    <div id="stats-panel">
+        <canvas id="stats-chart" width="800" height="400"></canvas>
+    </div>
 </body>
 </html>
 '''
 
 @app.route('/stats')
 def stats():
-    # Parse the log file and return JSON for plotting and for click details
+    # Parse the log file and return JSON for plotting
     stats_data = {}
-    prompt_details = {}
     try:
         with open(LOG_PATH, 'r') as f:
             for line in f:
@@ -364,37 +284,11 @@ def stats():
                 real = float(real)
                 tokens = int(tokens)
                 if llm not in stats_data:
-                    stats_data[llm] = {}
-                if tokens not in stats_data[llm]:
-                    stats_data[llm][tokens] = []
-                stats_data[llm][tokens].append(real)
-        # Compute averages
-        for llm in stats_data:
-            for tokens in stats_data[llm]:
-                avg_real = sum(stats_data[llm][tokens]) / len(stats_data[llm][tokens])
-                stats_data[llm][tokens] = avg_real
-        # Load prompt details
-        with open(PROMPT_LOG_PATH, 'r') as f:
-            for line in f:
-                try:
-                    entry = pyjson.loads(line)
-                    llm = entry['llm']
-                    tokens = entry['tokens']
-                    if (llm, tokens) not in prompt_details:
-                        prompt_details[(llm, tokens)] = []
-                    prompt_details[(llm, tokens)].append(entry)
-                except Exception:
-                    continue
+                    stats_data[llm] = []
+                stats_data[llm].append({'tokens': tokens, 'real': real})
     except Exception:
         pass
-    # Format for chart.js: {llm: [{tokens: t, real: avg}, ...]}
-    chart_data = {}
-    for llm in stats_data:
-        chart_data[llm] = []
-        for tokens in sorted(stats_data[llm]):
-            chart_data[llm].append({'tokens': tokens, 'real': stats_data[llm][tokens]})
-    # Prompt details: {(llm, tokens): [entry, ...]}
-    return jsonify({'chart': chart_data, 'details': prompt_details})
+    return jsonify(stats_data)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
