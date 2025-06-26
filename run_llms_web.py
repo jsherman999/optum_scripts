@@ -268,11 +268,40 @@ HTML_TEMPLATE = '''
                             document.getElementById('bar-details').style.display = 'block';
                         }
                     },
+                    onHover: function(evt, elements) {
+                        // Prevent default context menu on right click
+                        document.getElementById('stats-chart').oncontextmenu = function(e) { e.preventDefault(); };
+                    },
                     scales: {
                         x: { title: { display: true, text: 'Tokens', color: '#fff' }, ticks: { color: '#fff' }, stacked: true },
                         y: { title: { display: true, text: 'Avg Real Time (s)', color: '#fff' }, ticks: { color: '#fff' }, stacked: true }
                     }
                 }
+            });
+            // Add right click handler for bar
+            document.getElementById('stats-chart').addEventListener('contextmenu', function(e) {
+                let points = window.statsChart.getElementsAtEventForMode(e, 'nearest', { intersect: true }, true);
+                if(points.length > 0) {
+                    let point = points[0];
+                    let datasetIndex = point.datasetIndex;
+                    let tokenIdx = point.index;
+                    let llm = window.statsChart.data.datasets[datasetIndex].label;
+                    let tokenVal = allTokens[tokenIdx];
+                    let key = '["' + llm + '",' + tokenVal + ']';
+                    let entries = details[key] || [];
+                    if(entries.length > 0) {
+                        // Sort by real time
+                        entries.sort((a, b) => a.real - b.real);
+                        let html = `<div style='margin-bottom:0.5em;'><b>${llm} (tokens: ${tokenVal})</b><table style='font-size:0.8em; color:#fff; background:#222a44; border-radius:8px;'><tr><th>LLM</th><th>Tokens</th><th>Real Time (s)</th><th>Prompt</th></tr>`;
+                        for(const entry of entries) {
+                            html += `<tr><td>${entry.llm}</td><td>${entry.tokens}</td><td>${entry.real}</td><td style='max-width:400px;overflow-x:auto;white-space:pre;font-family:monospace;'>${escapeHtml(entry.prompt)}</td></tr>`;
+                        }
+                        html += '</table></div>';
+                        document.getElementById('bar-details').innerHTML = html;
+                        document.getElementById('bar-details').style.display = 'block';
+                    }
+                }
+                e.preventDefault();
             });
         });
     }
