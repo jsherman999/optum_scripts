@@ -133,6 +133,7 @@ HTML_TEMPLATE = '''
         #stats-panel { display: none; background: #101c33; border: 2px solid #ffe066; border-radius: 10px; margin-top: 2em; padding: 1em; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline"></script>
     <script>
     function submitPrompt(event) {
         event.preventDefault();
@@ -198,13 +199,19 @@ HTML_TEMPLATE = '''
                     data: data[llm].map(pt => ({x: pt.tokens, y: pt.real})),
                     borderColor: colors[idx % colors.length],
                     backgroundColor: colors[idx % colors.length],
-                    fill: false,
-                    tension: 0.2
+                    showLine: false,
+                    pointRadius: 5,
+                    type: 'scatter',
+                    trendlineLinear: {
+                        style: colors[idx % colors.length],
+                        lineStyle: 'solid',
+                        width: 2
+                    }
                 });
                 idx++;
             }
             window.statsChart = new Chart(ctx, {
-                type: 'line',
+                type: 'scatter',
                 data: { datasets: datasets },
                 options: {
                     plugins: { legend: { labels: { color: '#fff' } } },
