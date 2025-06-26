@@ -214,48 +214,6 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-def run_llm_with_time(label, prompt):
-    from io import StringIO
-    import contextlib
-    buf = StringIO()
-    start_real = pytime.time()
-    start_usage = resource.getrusage(resource.RUSAGE_SELF)
-    with contextlib.redirect_stdout(buf):
-        try:
-            fetch_response(label, prompt)
-        except Exception as e:
-            print(f"Error for {label}: {e}")
-    end_real = pytime.time()
-    end_usage = resource.getrusage(resource.RUSAGE_SELF)
-    real = end_real - start_real
-    user = end_usage.ru_utime - start_usage.ru_utime
-    sys_ = end_usage.ru_stime - start_usage.ru_stime
-    token_count = count_tokens(prompt)
-    log_run(label, real, user, sys_, token_count)
-    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
-    return timing, buf.getvalue().strip(), token_count
-
-def run_local_ollama_with_time(prompt):
-    from io import StringIO
-    import contextlib
-    buf = StringIO()
-    start_real = pytime.time()
-    start_usage = resource.getrusage(resource.RUSAGE_SELF)
-    with contextlib.redirect_stdout(buf):
-        try:
-            ask_llm.ask_ollama_local(prompt)
-        except Exception as e:
-            print(f"Error for local ollama: {e}")
-    end_real = pytime.time()
-    end_usage = resource.getrusage(resource.RUSAGE_SELF)
-    real = end_real - start_real
-    user = end_usage.ru_utime - start_usage.ru_utime
-    sys_ = end_usage.ru_stime - start_usage.ru_stime
-    token_count = count_tokens(prompt)
-    log_run("local", real, user, sys_, token_count)
-    timing = f"real {real:.2f}s  user {user:.2f}s  sys {sys_:.2f}s  tokens: {token_count}"
-    return timing, buf.getvalue().strip(), token_count
-
 @app.route('/run_llms', methods=['POST'])
 def run_llms():
     data = request.get_json()
