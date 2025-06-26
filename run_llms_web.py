@@ -189,6 +189,7 @@ HTML_TEMPLATE = '''
     </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+    // All JS functions are defined globally so they are always available
     function submitPrompt(event) {
         event.preventDefault();
         document.getElementById('progress').innerText = 'Working...';
@@ -234,7 +235,7 @@ HTML_TEMPLATE = '''
     function escapeHtml(text) {
         if (!text) return '';
         return text.replace(/[&<>"']/g, function(m) {
-            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m];
         });
     }
     function showStats() {
