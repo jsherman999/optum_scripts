@@ -129,8 +129,12 @@ def run_llms():
         local_timing, local_result, local_token_count = run_local_ollama_with_time(prompt)
     return jsonify({'results': results, 'timings': timings, 'token_counts': token_counts, 'local_result': local_result, 'local_timing': local_timing, 'local_token_count': local_token_count})
 
-@app.route('/', methods=['GET'])
+@app.route('/', methods=['GET', 'POST'])
 def index():
+    # If POST, redirect to GET to avoid method not allowed
+    if request.method == 'POST':
+        from flask import redirect, url_for
+        return redirect(url_for('index'))
     return render_template_string(HTML_TEMPLATE, results=None, prompt='', timings={}, local_timing=None)
 
 HTML_TEMPLATE = '''
