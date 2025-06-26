@@ -156,7 +156,7 @@ HTML_TEMPLATE = '''
 </head>
 <body>
     <h1>LLM Multi-Provider Results</h1>
-    <form method="post" action="javascript:void(0);" class="prompt-form" onsubmit="submitPrompt(event)">
+    <form method="post" class="prompt-form" onsubmit="submitPrompt(event)">
         <label for="prompt">Enter your prompt:</label><br>
         <textarea name="prompt" id="prompt">{{ prompt|default('') }}</textarea><br>
         <button type="submit">Run on all LLMs</button>
