@@ -108,6 +108,29 @@ def run_llms():
         local_timing, local_result, local_token_count = run_local_ollama_with_time(prompt)
     return jsonify({'results': results, 'timings': timings, 'token_counts': token_counts, 'local_result': local_result, 'local_timing': local_timing, 'local_token_count': local_token_count})
 
+@app.route('/run_single_llm', methods=['POST'])
+def run_single_llm():
+    data = request.get_json()
+    prompt = data.get('prompt', '').strip()
+    label = data.get('label', '').strip()
+    if not prompt or not label:
+        return jsonify({'error': 'Missing prompt or label'}), 400
+    timing, result, token_count = run_llm_with_time(label, prompt)
+    return jsonify({'label': label, 'result': result, 'timing': timing, 'token_count': token_count})
+
+@app.route('/run_local_ollama', methods=['POST'])
+def run_local_ollama():
+    data = request.get_json()
+    prompt = data.get('prompt', '').strip()
+    if not prompt:
+        return jsonify({'error': 'Missing prompt'}), 400
+    timing, result, token_count = run_local_ollama_with_time(prompt)
+    return jsonify({'label': 'local', 'result': result, 'timing': timing, 'token_count': token_count})
+
+@app.route('/get_llm_providers', methods=['GET'])
+def get_llm_providers():
+    return jsonify({'providers': list(LLM_PROVIDERS)})
+
 @app.route('/', methods=['GET'])
 def index():
     return render_template_string(HTML_TEMPLATE, results=None, prompt='', timings={}, local_timing=None)
@@ -134,39 +157,47 @@ HTML_TEMPLATE = '''
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-    function submitPrompt(event) {
+    async function submitPrompt(event) {
         event.preventDefault();
-        document.getElementById('progress').innerText = 'Working...';
         document.getElementById('results').innerHTML = '';
         var prompt = document.getElementById('prompt').value;
-        fetch('/run_llms', {
+        // Fetch LLM providers
+        let resp = await fetch('/get_llm_providers');
+        let data = await resp.json();
+        let providers = data.providers;
+        let results = [];
+        for (let i = 0; i < providers.length; i++) {
+            let label = providers[i];
+            document.getElementById('progress').innerText = 'Working on: ' + label;
+            let llmResp = await fetch('/run_single_llm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt, label: label })
+            });
+            let llmData = await llmResp.json();
+            results.push(llmData);
+            // Show partial results as they come in
+            let html = '';
+            for (let j = 0; j < results.length; j++) {
+                let r = results[j];
+                let boxId = `llm-output-${j}`;
+                html += `<div class=\"llm-result\"><div class=\"llm-label\">${r.label}</div><div class=\"llm-timing\">${r.timing || ''}</div><button class=\"copy-btn\" onclick=\"copyToClipboard('${boxId}')\">Copy</button><pre id=\"${boxId}\">${escapeHtml(r.result)}</pre></div>`;
+            }
+            document.getElementById('results').innerHTML = html;
+        }
+        // Local Ollama
+        document.getElementById('progress').innerText = 'Working on: LOCAL (Ollama)';
+        let localResp = await fetch('/run_local_ollama', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: prompt })
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('progress').innerText = '';
-            let html = '';
-            let idx = 0;
-            for (const [label, result] of Object.entries(data.results)) {
-                let timing = data.timings[label] || '';
-                let boxId = `llm-output-${idx}`;
-                html += `<div class=\"llm-result\"><div class=\"llm-label\">${label}</div><div class=\"llm-timing\">${timing}</div><button class=\"copy-btn\" onclick=\"copyToClipboard('${boxId}')\">Copy</button><pre id=\"${boxId}\">${escapeHtml(result)}</pre></div>`;
-                idx++;
-            }
-            if (data.local_result) {
-                let boxId = `llm-output-local`;
-                html += `<div class=\"llm-result\" style=\"background:#1a2b4c;\"><div class=\"llm-label\">LOCAL (Ollama)</div><div class=\"llm-timing\">${data.local_timing || ''}</div><button class=\"copy-btn\" onclick=\"copyToClipboard('${boxId}')\">Copy</button><pre id=\"${boxId}\">${escapeHtml(data.local_result)}</pre></div>`;
-            }
-            document.getElementById('results').innerHTML = html;
         });
-        // Simulate progress
-        let dots = 0;
-        let interval = setInterval(() => {
-            if (document.getElementById('progress').innerText === '') { clearInterval(interval); return; }
-            document.getElementById('progress').innerText = 'Working' + '.'.repeat((dots++ % 4) + 1);
-        }, 500);
+        let localData = await localResp.json();
+        let boxId = `llm-output-local`;
+        let html = document.getElementById('results').innerHTML;
+        html += `<div class=\"llm-result\" style=\"background:#1a2b4c;\"><div class=\"llm-label\">LOCAL (Ollama)</div><div class=\"llm-timing\">${localData.timing || ''}</div><button class=\"copy-btn\" onclick=\"copyToClipboard('${boxId}')\">Copy</button><pre id=\"${boxId}\">${escapeHtml(localData.result)}</pre></div>`;
+        document.getElementById('results').innerHTML = html;
+        document.getElementById('progress').innerText = '';
     }
     function copyToClipboard(elementId) {
         var text = document.getElementById(elementId).innerText;
