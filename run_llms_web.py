@@ -214,28 +214,5 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-@app.route('/run_llms', methods=['POST'])
-def run_llms():
-    data = request.get_json()
-    prompt = data.get('prompt', '').strip()
-    results = {}
-    timings = {}
-    token_counts = {}
-    local_result = None
-    local_timing = None
-    local_token_count = None
-    if prompt:
-        for label in LLM_PROVIDERS:
-            timing, result, token_count = run_llm_with_time(label, prompt)
-            results[label] = result
-            timings[label] = timing
-            token_counts[label] = token_count
-        local_timing, local_result, local_token_count = run_local_ollama_with_time(prompt)
-    return jsonify({'results': results, 'timings': timings, 'token_counts': token_counts, 'local_result': local_result, 'local_timing': local_timing, 'local_token_count': local_token_count})
-
-@app.route('/', methods=['GET'])
-def index():
-    return render_template_string(HTML_TEMPLATE, results=None, prompt='', timings={}, local_timing=None)
-
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
