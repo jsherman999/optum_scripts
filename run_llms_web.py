@@ -133,7 +133,6 @@ HTML_TEMPLATE = '''
         #stats-panel { display: none; background: #101c33; border: 2px solid #ffe066; border-radius: 10px; margin-top: 2em; padding: 1em; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-trendline"></script>
     <script>
     function submitPrompt(event) {
         event.preventDefault();
@@ -190,34 +189,44 @@ HTML_TEMPLATE = '''
             document.getElementById('stats-panel').style.display = 'block';
             let ctx = document.getElementById('stats-chart').getContext('2d');
             if(window.statsChart) window.statsChart.destroy();
-            let datasets = [];
+            // Collect all unique token counts
+            let tokenSet = new Set();
+            for(const llm in data) {
+                for(const pt of data[llm]) {
+                    tokenSet.add(pt.tokens);
+                }
+            }
+            let allTokens = Array.from(tokenSet).sort((a,b)=>a-b);
+            // Build datasets for stacked bar
             let colors = ['#ff6384','#36a2eb','#ffce56','#4bc0c0','#9966ff','#ff9f40'];
+            let datasets = [];
             let idx = 0;
             for(const llm in data) {
+                let barData = allTokens.map(tok => {
+                    let found = data[llm].find(pt => pt.tokens === tok);
+                    return found ? found.real : 0;
+                });
                 datasets.push({
                     label: llm,
-                    data: data[llm].map(pt => ({x: pt.tokens, y: pt.real})),
-                    borderColor: colors[idx % colors.length],
+                    data: barData,
                     backgroundColor: colors[idx % colors.length],
-                    showLine: false,
-                    pointRadius: 5,
-                    type: 'scatter',
-                    trendlineLinear: {
-                        style: colors[idx % colors.length],
-                        lineStyle: 'solid',
-                        width: 2
-                    }
+                    stack: 'Stack 0',
+                    borderWidth: 1
                 });
                 idx++;
             }
             window.statsChart = new Chart(ctx, {
-                type: 'scatter',
-                data: { datasets: datasets },
+                type: 'bar',
+                data: {
+                    labels: allTokens,
+                    datasets: datasets
+                },
                 options: {
                     plugins: { legend: { labels: { color: '#fff' } } },
+                    responsive: true,
                     scales: {
-                        x: { title: { display: true, text: 'Tokens', color: '#fff' }, ticks: { color: '#fff' }, type: 'linear' },
-                        y: { title: { display: true, text: 'Real Time (s)', color: '#fff' }, ticks: { color: '#fff' } }
+                        x: { title: { display: true, text: 'Tokens', color: '#fff' }, ticks: { color: '#fff' }, stacked: true },
+                        y: { title: { display: true, text: 'Real Time (s)', color: '#fff' }, ticks: { color: '#fff' }, stacked: true }
                     }
                 }
             });
