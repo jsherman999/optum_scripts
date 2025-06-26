@@ -153,6 +153,40 @@ HTML_TEMPLATE = '''
         .copy-btn:hover { background: #ffe066; }
         #stats-panel { display: none; background: #101c33; border: 2px solid #ffe066; border-radius: 10px; margin-top: 2em; padding: 1em; }
     </style>
+</head>
+<body>
+    <h1>LLM Multi-Provider Results</h1>
+    <form method="post" class="prompt-form" onsubmit="submitPrompt(event)">
+        <label for="prompt">Enter your prompt:</label><br>
+        <textarea name="prompt" id="prompt">{{ prompt|default('') }}</textarea><br>
+        <button type="submit">Run on all LLMs</button>
+    </form>
+    <button type="button" onclick="showStats()" style="margin-bottom:1em;">Show Stats</button>
+    <div id="progress"></div>
+    <div id="results">
+    {% if results %}
+        {% for label, result in results.items() %}
+            <div class="llm-result">
+                <div class="llm-label">{{ label }}</div>
+                <div class="llm-timing">{{ timings[label] }}</div>
+                <button class="copy-btn" onclick="copyToClipboard('llm-output-{{ loop.index0 }}')">Copy</button>
+                <pre id="llm-output-{{ loop.index0 }}">{{ result }}</pre>
+            </div>
+        {% endfor %}
+        {% if local_result %}
+            <div class="llm-result" style="background:#1a2b4c;">
+                <div class="llm-label">LOCAL (Ollama)</div>
+                <div class="llm-timing">{{ local_timing }}</div>
+                <button class="copy-btn" onclick="copyToClipboard('llm-output-local')">Copy</button>
+                <pre id="llm-output-local">{{ local_result }}</pre>
+            </div>
+        {% endif %}
+    {% endif %}
+    </div>
+    <div id="stats-panel">
+        <canvas id="stats-chart" width="800" height="400"></canvas>
+        <div id="bar-details" style="display:none; background:#222a44; color:#fff; border-radius:8px; margin-top:1em; padding:1em;"></div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     function submitPrompt(event) {
@@ -306,40 +340,6 @@ HTML_TEMPLATE = '''
         });
     }
     </script>
-</head>
-<body>
-    <h1>LLM Multi-Provider Results</h1>
-    <form method="post" class="prompt-form" onsubmit="submitPrompt(event)">
-        <label for="prompt">Enter your prompt:</label><br>
-        <textarea name="prompt" id="prompt">{{ prompt|default('') }}</textarea><br>
-        <button type="submit">Run on all LLMs</button>
-    </form>
-    <button onclick="showStats()" style="margin-bottom:1em;">Show Stats</button>
-    <div id="progress"></div>
-    <div id="results">
-    {% if results %}
-        {% for label, result in results.items() %}
-            <div class="llm-result">
-                <div class="llm-label">{{ label }}</div>
-                <div class="llm-timing">{{ timings[label] }}</div>
-                <button class="copy-btn" onclick="copyToClipboard('llm-output-{{ loop.index0 }}')">Copy</button>
-                <pre id="llm-output-{{ loop.index0 }}">{{ result }}</pre>
-            </div>
-        {% endfor %}
-        {% if local_result %}
-            <div class="llm-result" style="background:#1a2b4c;">
-                <div class="llm-label">LOCAL (Ollama)</div>
-                <div class="llm-timing">{{ local_timing }}</div>
-                <button class="copy-btn" onclick="copyToClipboard('llm-output-local')">Copy</button>
-                <pre id="llm-output-local">{{ local_result }}</pre>
-            </div>
-        {% endif %}
-    {% endif %}
-    </div>
-    <div id="stats-panel">
-        <canvas id="stats-chart" width="800" height="400"></canvas>
-        <div id="bar-details" style="display:none; background:#222a44; color:#fff; border-radius:8px; margin-top:1em; padding:1em;"></div>
-    </div>
 </body>
 </html>
 '''
