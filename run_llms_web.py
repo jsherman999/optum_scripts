@@ -130,7 +130,9 @@ HTML_TEMPLATE = '''
         #progress { margin: 1em 0; font-size: 1.1em; color: #ff0; }
         .copy-btn { position: absolute; top: 1em; right: 1em; background: #ff0; color: #222a44; border: none; border-radius: 4px; padding: 0.2em 0.8em; font-size: 0.95em; cursor: pointer; }
         .copy-btn:hover { background: #ffe066; }
+        #stats-panel { display: none; background: #101c33; border: 2px solid #ffe066; border-radius: 10px; margin-top: 2em; padding: 1em; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
     function submitPrompt(event) {
         event.preventDefault();
@@ -180,6 +182,40 @@ HTML_TEMPLATE = '''
             return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
         });
     }
+    function showStats() {
+        fetch('/stats')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('stats-panel').style.display = 'block';
+            let ctx = document.getElementById('stats-chart').getContext('2d');
+            if(window.statsChart) window.statsChart.destroy();
+            let datasets = [];
+            let colors = ['#ff6384','#36a2eb','#ffce56','#4bc0c0','#9966ff','#ff9f40'];
+            let idx = 0;
+            for(const llm in data) {
+                datasets.push({
+                    label: llm,
+                    data: data[llm].map(pt => ({x: pt.tokens, y: pt.real})),
+                    borderColor: colors[idx % colors.length],
+                    backgroundColor: colors[idx % colors.length],
+                    fill: false,
+                    tension: 0.2
+                });
+                idx++;
+            }
+            window.statsChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets: datasets },
+                options: {
+                    plugins: { legend: { labels: { color: '#fff' } } },
+                    scales: {
+                        x: { title: { display: true, text: 'Tokens', color: '#fff' }, ticks: { color: '#fff' }, type: 'linear' },
+                        y: { title: { display: true, text: 'Real Time (s)', color: '#fff' }, ticks: { color: '#fff' } }
+                    }
+                }
+            });
+        });
+    }
     </script>
 </head>
 <body>
@@ -189,6 +225,7 @@ HTML_TEMPLATE = '''
         <textarea name="prompt" id="prompt">{{ prompt|default('') }}</textarea><br>
         <button type="submit">Run on all LLMs</button>
     </form>
+    <button onclick="showStats()" style="margin-bottom:1em;">Show Stats</button>
     <div id="progress"></div>
     <div id="results">
     {% if results %}
@@ -210,9 +247,32 @@ HTML_TEMPLATE = '''
         {% endif %}
     {% endif %}
     </div>
+    <div id="stats-panel">
+        <canvas id="stats-chart" width="800" height="400"></canvas>
+    </div>
 </body>
 </html>
 '''
+
+@app.route('/stats')
+def stats():
+    # Parse the log file and return JSON for plotting
+    stats_data = {}
+    try:
+        with open(LOG_PATH, 'r') as f:
+            for line in f:
+                parts = line.strip().split(',')
+                if len(parts) != 6:
+                    continue
+                llm, real, user, sys_, tokens, epoch = parts
+                real = float(real)
+                tokens = int(tokens)
+                if llm not in stats_data:
+                    stats_data[llm] = []
+                stats_data[llm].append({'tokens': tokens, 'real': real})
+    except Exception:
+        pass
+    return jsonify(stats_data)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
