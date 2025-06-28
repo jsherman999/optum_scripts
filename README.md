@@ -1,6 +1,26 @@
 # optum_scripts
 transfer landing area for public scripts
 
+
+-rwxr-xr-x 1 jay jay 13830 Jun 27 18:51 run_llms_web.py
+-rwxr-xr-x 1 jay jay  1432 Jun 27 18:51 run_all_llms.py
+-rwxr-xr-x 1 jay jay  2662 Jun 27 18:51 ask_local_llama.py
+-rwxr-xr-x 1 jay jay  4761 Jun 27 18:51 ask_llm.py
+-rw-r--r-- 1 jay jay  3051 Jun 27 18:51 README.md
+-rwxr-x--- 1 jay jay 11939 Jun 27 18:55 authlog_collector_agents.py
+
+ask_llm.py: general script for LM query, specify -H chatgpt, gemini, claude, local
+
+run_llms_web.py: simple web form generator that will call prompt on multiple LLMs, logging times and tokens and graphing results.
+
+run_all_llms.py: command line tool to run prompt on multiple llms
+
+ask_local_llama.py:  local llama3 LM query script example
+
+authlog_collector_agents.py:  example script that uses AI agents coordinating tasks
+
+
+
 Notes on using Ollama to install and run a local LLM:
 -----------------------------------------------------
 Here’s a concrete, step-by-step on Ubuntu (or any Debian-based Linux) to get Ollama up and running, then pull and run Llama 3.
