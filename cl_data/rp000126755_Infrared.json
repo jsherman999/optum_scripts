@@ -1,0 +1,350 @@
+{
+    "results": [
+        {
+            "alt_id": "4d5824e03e1c55d612e302ba0175536d",
+            "infrared_id": "4d5824e03e1c55d612e302ba0175536d",
+            "entity_name": "rp000126755",
+            "entity_type": "virtual server",
+            "entity_category": "server",
+            "data_source": "trusted_record",
+            "is_cloud_entity": 0,
+            "data_source_id": {
+                "entity_name": "rp000126755",
+                "entity_type": "virtual server"
+            },
+            "active_ind": 1,
+            "cpu_count": 16,
+            "data_source_description": "CDC REPLICATION FROM RXCLAIM TO KAFKA WITH SRM",
+            "status_src": "ACTIVE",
+            "status_std": "ACTIVE",
+            "ram_gb": 62,
+            "support_stage_std": "STEADY STATE",
+            "ask_id": "UHGWM110-016299",
+            "billing_code": "4009084",
+            "environment_std": "PRODUCTION",
+            "application_description": "ORx IDW is an Integrated Data Warehouse for OptumRx with data from Legacy OptumRx Book 1 and Book 2 and Legacy Catamaran. It is the Data Analytics & Reporting platform for the OptumRx internal Business areas (DA&R, Client Management, Claims, Clinical, Accounting & Finance, Prior Authorization, Specialty, Home Delivery, Billing, Marketing) as well as Clients.",
+            "application_name": "ORx Integrated Data Warehouse",
+            "environment_src": "PRODUCTION",
+            "host_id": "MN053-5HZ1-03S08.UHC.COM",
+            "manufacturer": "VMWARE, INC.",
+            "os_type": "LINUX",
+            "location_code": "MN053",
+            "manufacturer_std": "VMWARE",
+            "os_type_std": "Linux",
+            "support_group": "UNIX LINUX - UNIX SERVER (UHT) - SPT",
+            "vmdks": 3,
+            "availability_zone": "AZA",
+            "model": "VMWARE VIRTUAL PLATFORM",
+            "os_desc": "REDHAT LINUX 9",
+            "insert_timestamp": "2025-09-30T10:44:31.262Z",
+            "ip_address": "10.28.57.116",
+            "snapshot_start_timestamp": "2025-09-30T10:44:31.262Z",
+            "fqdn": "RP000126755.UHC.COM",
+            "snapshot_end_timestamp": "9999-12-31T00:00:00.000Z",
+            "owner_ms_id": "pperiaka",
+            "service_ask_ids": [
+                "UHGWM110-016299"
+            ],
+            "version_num": 203,
+            "billing_ask_ids": [
+                "UHGWM110-016299"
+            ],
+            "changed_data": {
+                "host_id": {
+                    "new_value": "MN053-5HZ1-03S08.UHC.COM",
+                    "old_value": "MN053-5HZ1-04S08.UHC.COM"
+                }
+            },
+            "maintenance_group": "3",
+            "os_vendor_std": "Redhat",
+            "maint_window_days": "THURSDAY",
+            "os_version": "9.6",
+            "snapshot_current_ind": 1,
+            "cluster_id": "MN053H1A2C09",
+            "location_code_std": "MN053",
+            "power_state": "POWERED ON",
+            "os_vendor": "REDHAT",
+            "support_stage_src": "STEADY STATE",
+            "maint_window_start_time": "05:00:00+00",
+            "created_by_employee_id": "001058185",
+            "created_by_full_name": "RONNIE SIKORSKI",
+            "maint_window_end_time": "09:00:00+00",
+            "server_support_model": "Full Support",
+            "created_by_title": "Sr Data Engineer",
+            "maint_window_start_time_utc": "05:00:00+00",
+            "created_by_email": "ron.sikorski@optum.com",
+            "maint_window_end_time_utc": "09:00:00+00",
+            "created_by_phone": "763/361-7019",
+            "created_by_user_status": "Retired",
+            "created_by_user_type": "Employee",
+            "created_by_location_cd": "IL950",
+            "created_by_leader_full_name": "SRIDHAR CHALASANI",
+            "created_by_leadership_top_down": {
+                "leadership_top_down": [
+                    {
+                        "level": 1,
+                        "leader_full_name": "STEPHEN HEMSLEY",
+                        "leader_employee_id": "000046253"
+                    },
+                    {
+                        "level": 2,
+                        "leader_full_name": "WAYNE DEVEYDT",
+                        "leader_employee_id": "900049138"
+                    },
+                    {
+                        "level": 3,
+                        "leader_full_name": "PAUL WEYMOUTH",
+                        "leader_employee_id": "000236203"
+                    },
+                    {
+                        "level": 4,
+                        "leader_full_name": "SANTIAGO ABRAHAM",
+                        "leader_employee_id": "001340643"
+                    },
+                    {
+                        "level": 5,
+                        "leader_full_name": "HARIKRISHNA HARI",
+                        "leader_employee_id": "000468100"
+                    },
+                    {
+                        "level": 6,
+                        "leader_full_name": "JOHN HAGGERTY",
+                        "leader_employee_id": "001055645"
+                    },
+                    {
+                        "level": 7,
+                        "leader_full_name": "KALYAN AVADHANULA",
+                        "leader_employee_id": "000680956"
+                    },
+                    {
+                        "level": 8,
+                        "leader_full_name": "SRIDHAR CHALASANI",
+                        "leader_employee_id": "000758531"
+                    }
+                ]
+            },
+            "provision_system": "VREALIZE",
+            "service_level_owner_employee_id": "000758531",
+            "created_by_segment": "Optum Technology",
+            "service_level_owner_ms_id": "schalas",
+            "created_by_business": "Optum Rx Technology",
+            "created_by_division": "OptumRx Technology",
+            "created_by_gl_code": "44770-01530-USAIL800-154310---",
+            "supported_by": "UHT-UNIX",
+            "vcenter_id": "MN053H1A2.UHC.COM",
+            "owner_employee_id": "001372501",
+            "owner_full_name": "PANDIARAJA PERIAKARUPPAN",
+            "owner_title": "Data Engineering Consultant",
+            "owner_email": "pandiaraja.periakaruppan@optum.com",
+            "owner_phone": "403/968-5622",
+            "owner_user_status": "Retired",
+            "owner_user_type": "Employee",
+            "owner_location_cd": "II550",
+            "owner_leader_full_name": "SRIDHAR CHALASANI",
+            "owner_leadership_top_down": {
+                "leadership_top_down": [
+                    {
+                        "level": 1,
+                        "leader_full_name": "STEPHEN HEMSLEY",
+                        "leader_employee_id": "000046253"
+                    },
+                    {
+                        "level": 2,
+                        "leader_full_name": "WAYNE DEVEYDT",
+                        "leader_employee_id": "900049138"
+                    },
+                    {
+                        "level": 3,
+                        "leader_full_name": "PAUL WEYMOUTH",
+                        "leader_employee_id": "000236203"
+                    },
+                    {
+                        "level": 4,
+                        "leader_full_name": "SANTIAGO ABRAHAM",
+                        "leader_employee_id": "001340643"
+                    },
+                    {
+                        "level": 5,
+                        "leader_full_name": "HARIKRISHNA HARI",
+                        "leader_employee_id": "000468100"
+                    },
+                    {
+                        "level": 6,
+                        "leader_full_name": "JOHN HAGGERTY",
+                        "leader_employee_id": "001055645"
+                    },
+                    {
+                        "level": 7,
+                        "leader_full_name": "KALYAN AVADHANULA",
+                        "leader_employee_id": "000680956"
+                    },
+                    {
+                        "level": 8,
+                        "leader_full_name": "SRIDHAR CHALASANI",
+                        "leader_employee_id": "000758531"
+                    }
+                ]
+            },
+            "owner_segment": "Optum Global Advantage",
+            "owner_business": "OG Adv APAC-1",
+            "owner_division": "Tech-OptumRx",
+            "owner_gl_code": "41346-06868-INDIN550-846633---",
+            "business_owner_employee_id": "000467201",
+            "business_owner_ms_id": "khoskin",
+            "business_owner_full_name": "KEVIN HOSKINS",
+            "business_owner_title": "Dir Bus Anlys",
+            "business_owner_email": "kevin.hoskins@optum.com",
+            "business_owner_phone": "602/462-7532",
+            "business_owner_user_status": "Active",
+            "business_owner_user_type": "Employee",
+            "business_owner_location_cd": "AZ950",
+            "business_owner_leader_full_name": "DAMAJIPANT JAMBHALE",
+            "business_owner_leadership_top_down": {
+                "leadership_top_down": [
+                    {
+                        "level": 1,
+                        "leader_full_name": "STEPHEN HEMSLEY",
+                        "leader_employee_id": "000046253"
+                    },
+                    {
+                        "level": 2,
+                        "leader_full_name": "PATRICK CONWAY",
+                        "leader_employee_id": "001546687"
+                    },
+                    {
+                        "level": 3,
+                        "leader_full_name": "SUSAN ARTHUR",
+                        "leader_employee_id": "001495959"
+                    },
+                    {
+                        "level": 4,
+                        "leader_full_name": "ERIN SCHMUKER",
+                        "leader_employee_id": "000646386"
+                    },
+                    {
+                        "level": 5,
+                        "leader_full_name": "CIAN O'MAHONY",
+                        "leader_employee_id": "001308706"
+                    },
+                    {
+                        "level": 6,
+                        "leader_full_name": "DAMAJIPANT JAMBHALE",
+                        "leader_employee_id": "000489306"
+                    }
+                ]
+            },
+            "business_owner_segment": "OptumRx",
+            "business_owner_business": "OptumRx Network Relations",
+            "business_owner_division": "OptumRx Ntwk Relations",
+            "business_owner_gl_code": "10920-08000-USAAZ120-700940---",
+            "service_level_owner_full_name": "SRIDHAR CHALASANI",
+            "service_level_owner_title": "Dir Data Engineering",
+            "service_level_owner_email": "sridhar.chalasani@optum.com",
+            "service_level_owner_phone": "949/930-9321",
+            "service_level_owner_user_status": "Active",
+            "service_level_owner_user_type": "Employee",
+            "service_level_owner_location_cd": "NC950",
+            "service_level_owner_leader_full_name": "KALYAN AVADHANULA",
+            "technical_owner_employee_id": "000680956",
+            "service_level_owner_leadership_top_down": {
+                "leadership_top_down": [
+                    {
+                        "level": 1,
+                        "leader_full_name": "STEPHEN HEMSLEY",
+                        "leader_employee_id": "000046253"
+                    },
+                    {
+                        "level": 2,
+                        "leader_full_name": "WAYNE DEVEYDT",
+                        "leader_employee_id": "900049138"
+                    },
+                    {
+                        "level": 3,
+                        "leader_full_name": "PAUL WEYMOUTH",
+                        "leader_employee_id": "000236203"
+                    },
+                    {
+                        "level": 4,
+                        "leader_full_name": "SANTIAGO ABRAHAM",
+                        "leader_employee_id": "001340643"
+                    },
+                    {
+                        "level": 5,
+                        "leader_full_name": "HARIKRISHNA HARI",
+                        "leader_employee_id": "000468100"
+                    },
+                    {
+                        "level": 6,
+                        "leader_full_name": "JOHN HAGGERTY",
+                        "leader_employee_id": "001055645"
+                    },
+                    {
+                        "level": 7,
+                        "leader_full_name": "KALYAN AVADHANULA",
+                        "leader_employee_id": "000680956"
+                    }
+                ]
+            },
+            "technical_owner_ms_id": "kavadh1",
+            "service_level_owner_segment": "Optum Technology",
+            "technical_owner_full_name": "KALYAN AVADHANULA",
+            "service_level_owner_business": "Optum Rx Technology",
+            "technical_owner_title": "Sr Dir Software Engg",
+            "service_level_owner_division": "OptumRx Technology",
+            "technical_owner_email": "kalyan_avadhanula@optum.com",
+            "infrastructure_catalog_management_group": "FRONTLINEINJECTORS_CM3_IT",
+            "service_level_owner_gl_code": "44770-01510-USACA160-154310---",
+            "technical_owner_phone": "4030835645",
+            "technical_owner_user_status": "Active",
+            "technical_owner_user_type": "Employee",
+            "technical_owner_location_cd": "II519",
+            "technical_owner_leader_full_name": "JOHN HAGGERTY",
+            "vrops_uuid": "502CD3C6-DD98-F5AF-4690-AC3F4F2B3F69",
+            "technical_owner_leadership_top_down": {
+                "leadership_top_down": [
+                    {
+                        "level": 1,
+                        "leader_full_name": "STEPHEN HEMSLEY",
+                        "leader_employee_id": "000046253"
+                    },
+                    {
+                        "level": 2,
+                        "leader_full_name": "WAYNE DEVEYDT",
+                        "leader_employee_id": "900049138"
+                    },
+                    {
+                        "level": 3,
+                        "leader_full_name": "PAUL WEYMOUTH",
+                        "leader_employee_id": "000236203"
+                    },
+                    {
+                        "level": 4,
+                        "leader_full_name": "SANTIAGO ABRAHAM",
+                        "leader_employee_id": "001340643"
+                    },
+                    {
+                        "level": 5,
+                        "leader_full_name": "HARIKRISHNA HARI",
+                        "leader_employee_id": "000468100"
+                    },
+                    {
+                        "level": 6,
+                        "leader_full_name": "JOHN HAGGERTY",
+                        "leader_employee_id": "001055645"
+                    }
+                ]
+            },
+            "technical_owner_segment": "Optum Global Advantage",
+            "technical_owner_business": "OG Adv APAC-1",
+            "microseg_infrastructure_ind": "false",
+            "technical_owner_division": "Tech-OptumRx",
+            "technical_owner_gl_code": "10361-06870-INDIN519-846633---",
+            "os_remediation": "CIMS MANAGED OS"
+        }
+    ],
+    "pagination": {
+        "page": 1,
+        "pageSize": 50,
+        "total": 1
+    }
+}
