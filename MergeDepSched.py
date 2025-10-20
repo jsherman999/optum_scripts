@@ -38,6 +38,7 @@ def standardize_date(date_str: str) -> str:
         '%Y-%m-%dT%H:%M:%S.%fZ',  # 2025-08-24T01:03:37.793Z
         '%Y-%m-%dT%H:%M:%S',       # 2024-02-08T23:00:00
         '%Y-%m-%d',                # 2024-06-10
+        '%m/%d/%Y',                # 8/29/2025
     ]
 
     for fmt in date_formats:
@@ -141,8 +142,28 @@ def load_infrared_data(hostname: str, data_dir: str = 'data') -> Optional[Dict]:
 
     # If file doesn't exist, try to generate it
     if not os.path.exists(json_path):
-        print(f"Warning: {json_path} not found. Would call 'seered {hostname} -json > {json_path}'")
-        return None
+        print(f"Generating {json_path} using seered...")
+        try:
+            with open(json_path, 'w') as outfile:
+                result = subprocess.run(
+                    ['seered', hostname, '-json'],
+                    stdout=outfile,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=60
+                )
+                if result.returncode != 0:
+                    print(f"Error running seered: {result.stderr}")
+                    return None
+        except FileNotFoundError:
+            print(f"Error: 'seered' command not found. Skipping {hostname}")
+            return None
+        except subprocess.TimeoutExpired:
+            print(f"Error: 'seered' command timed out for {hostname}")
+            return None
+        except Exception as e:
+            print(f"Error generating {json_path}: {e}")
+            return None
 
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
@@ -178,8 +199,31 @@ def load_deploy_sched_data(hostname: str, data_dir: str = 'data') -> List[Dict]:
 
     # If file doesn't exist, try to generate it
     if not os.path.exists(json_path):
-        print(f"Warning: {json_path} not found. Would call './pull_deployment_schedule.sh {hostname} > {json_path}'")
-        return []
+        print(f"Generating {json_path} using pull_deployment_schedule.sh...")
+        script_path = './pull_deployment_schedule.sh'
+
+        if not os.path.exists(script_path):
+            print(f"Error: {script_path} not found. Skipping {hostname}")
+            return []
+
+        try:
+            with open(json_path, 'w') as outfile:
+                result = subprocess.run(
+                    [script_path, hostname],
+                    stdout=outfile,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=120
+                )
+                if result.returncode != 0:
+                    print(f"Error running pull_deployment_schedule.sh: {result.stderr}")
+                    return []
+        except subprocess.TimeoutExpired:
+            print(f"Error: pull_deployment_schedule.sh timed out for {hostname}")
+            return []
+        except Exception as e:
+            print(f"Error generating {json_path}: {e}")
+            return []
 
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
