@@ -127,7 +127,7 @@ def get_earliest_dates(cve_ids: str, erratum_dates: Dict[str, tuple]) -> tuple:
     return (earliest_redhat or '', earliest_optum or '')
 
 
-def load_infrared_data(hostname: str, data_dir: str = 'data') -> Optional[Dict]:
+def load_infrared_data(hostname: str, data_dir: str = 'cl_data') -> Optional[Dict]:
     """
     Load Infrared JSON data for a hostname.
 
@@ -184,7 +184,7 @@ def load_infrared_data(hostname: str, data_dir: str = 'data') -> Optional[Dict]:
     return None
 
 
-def load_deploy_sched_data(hostname: str, data_dir: str = 'data') -> List[Dict]:
+def load_deploy_sched_data(hostname: str, data_dir: str = 'cl_data') -> List[Dict]:
     """
     Load DeploymentSchedule JSON data for a hostname.
 
@@ -263,7 +263,7 @@ def extract_hostnames(tenable_csv: str) -> Set[str]:
     return hostnames
 
 
-def create_merged_csv(tenable_csv: str, erratum_csv: str, output_csv: str):
+def create_merged_csv(tenable_csv: str, erratum_csv: str, output_csv: str, data_dir: str = 'cl_data'):
     """
     Main function to create the merged CSV file.
 
@@ -271,6 +271,7 @@ def create_merged_csv(tenable_csv: str, erratum_csv: str, output_csv: str):
         tenable_csv: Path to Tenable.csv
         erratum_csv: Path to erratum_cumulative.csv
         output_csv: Path to output Merged.csv
+        data_dir: Directory containing JSON data files
     """
     # Load erratum dates
     print("Loading erratum dates...")
@@ -287,11 +288,11 @@ def create_merged_csv(tenable_csv: str, erratum_csv: str, output_csv: str):
     deploy_sched_cache = {}
 
     for hostname in hostnames:
-        infrared_data = load_infrared_data(hostname)
+        infrared_data = load_infrared_data(hostname, data_dir)
         if infrared_data:
             infrared_cache[hostname] = infrared_data
 
-        deploy_sched_data = load_deploy_sched_data(hostname)
+        deploy_sched_data = load_deploy_sched_data(hostname, data_dir)
         if deploy_sched_data:
             deploy_sched_cache[hostname] = deploy_sched_data
 
@@ -410,9 +411,20 @@ def create_merged_csv(tenable_csv: str, erratum_csv: str, output_csv: str):
 
 def main():
     """Main entry point."""
-    tenable_csv = 'Tenable.csv'
-    erratum_csv = 'erratum_cumulative.csv'
-    output_csv = 'Merged.csv'
+    import sys
+
+    # Parse command-line arguments
+    if len(sys.argv) > 1:
+        tenable_csv = sys.argv[1]
+        erratum_csv = sys.argv[2] if len(sys.argv) > 2 else 'cl_erratum_cumulative.csv'
+        output_csv = sys.argv[3] if len(sys.argv) > 3 else 'Merged.csv'
+        data_dir = sys.argv[4] if len(sys.argv) > 4 else 'cl_data'
+    else:
+        # Default values
+        tenable_csv = 'cl_Tenable.csv'
+        erratum_csv = 'cl_erratum_cumulative.csv'
+        output_csv = 'cl_Merged.csv'
+        data_dir = 'cl_data'
 
     # Check input files exist
     if not os.path.exists(tenable_csv):
@@ -424,10 +436,10 @@ def main():
         return 1
 
     # Create data directory if it doesn't exist
-    os.makedirs('data', exist_ok=True)
+    os.makedirs(data_dir, exist_ok=True)
 
     # Create merged CSV
-    create_merged_csv(tenable_csv, erratum_csv, output_csv)
+    create_merged_csv(tenable_csv, erratum_csv, output_csv, data_dir)
 
     return 0
 

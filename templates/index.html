@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Tenable.csv - MergeDepSched{% endblock %}
+
+{% block content %}
+<div class="upload-section">
+    <div class="card">
+        <div class="card-header">
+            <h2>Upload Vulnerability Data</h2>
+            <p>Upload your Tenable.csv file to merge with deployment and infrastructure data</p>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="uploadForm">
+                <div class="form-group">
+                    <label for="file" class="file-label">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span id="fileName">Choose Tenable.csv file or drag & drop</span>
+                        <input type="file" name="file" id="file" accept=".csv" required>
+                    </label>
+                </div>
+
+                <div class="info-box">
+                    <h3>What this tool does:</h3>
+                    <ul>
+                        <li>Reads vulnerability data from your Tenable.csv file</li>
+                        <li>Merges with CVE insert dates from erratum_cumulative.csv</li>
+                        <li>Enriches with deployment schedule data</li>
+                        <li>Adds infrastructure metadata from Infrared</li>
+                        <li>Produces a comprehensive Merged.csv with all relevant fields</li>
+                    </ul>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <span id="btnText">Process File</span>
+                    <span id="btnSpinner" class="spinner" style="display: none;"></span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('file');
+    const fileName = document.getElementById('fileName');
+    const uploadForm = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+    const btnSpinner = document.getElementById('btnSpinner');
+    const fileLabel = document.querySelector('.file-label');
+
+    // Handle file selection
+    fileInput.addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            fileName.textContent = e.target.files[0].name;
+            fileLabel.classList.add('has-file');
+        }
+    });
+
+    // Handle drag and drop
+    fileLabel.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        fileLabel.classList.add('drag-over');
+    });
+
+    fileLabel.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        fileLabel.classList.remove('drag-over');
+    });
+
+    fileLabel.addEventListener('drop', function(e) {
+        e.preventDefault();
+        fileLabel.classList.remove('drag-over');
+
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            fileName.textContent = e.dataTransfer.files[0].name;
+            fileLabel.classList.add('has-file');
+        }
+    });
+
+    // Handle form submission
+    uploadForm.addEventListener('submit', function() {
+        submitBtn.disabled = true;
+        btnText.textContent = 'Processing...';
+        btnSpinner.style.display = 'inline-block';
+    });
+</script>
+{% endblock %}

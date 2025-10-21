@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Results - MergeDepSched{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="results-section">
+    <div class="results-header">
+        <div>
+            <h2>Merged Vulnerability Data</h2>
+            <p class="results-info">
+                <span class="badge">{{ session_data.row_count }} records</span>
+                <span class="timestamp">Processed at {{ session_data.timestamp }}</span>
+            </p>
+        </div>
+        <div class="results-actions">
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">Upload New File</a>
+            <a href="{{ url_for('download_file', timestamp=session_data.timestamp) }}" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Download CSV
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-wrapper">
+                <table id="resultsTable" class="display responsive nowrap" style="width:100%">
+                    <thead>
+                        <tr>
+                            {% for column in columns %}
+                            <th>{{ column }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in data %}
+                        <tr>
+                            {% for column in columns %}
+                            <td>
+                                {% if column == 'Severity' %}
+                                    <span class="severity-badge severity-{{ row[column]|lower|replace(' ', '-') }}">
+                                        {{ row[column] }}
+                                    </span>
+                                {% elif column == 'Known Exploit' %}
+                                    {% if row[column]|lower == 'yes' or row[column]|lower == 'true' %}
+                                        <span class="badge badge-danger">Yes</span>
+                                    {% else %}
+                                        <span class="badge badge-success">No</span>
+                                    {% endif %}
+                                {% elif column == 'Status' %}
+                                    <span class="status-badge status-{{ row[column]|lower|replace(' ', '-') }}">
+                                        {{ row[column] }}
+                                    </span>
+                                {% elif column == 'scan_after_build' %}
+                                    {% if row[column] == 'Y' %}
+                                        <span class="badge badge-info">Yes</span>
+                                    {% elif row[column] == 'N' %}
+                                        <span class="badge badge-muted">No</span>
+                                    {% else %}
+                                        {{ row[column] }}
+                                    {% endif %}
+                                {% elif column == 'Description' or column == 'Remediation' %}
+                                    <div class="truncate-text" title="{{ row[column] }}">
+                                        {{ row[column][:100] }}{% if row[column]|length > 100 %}...{% endif %}
+                                    </div>
+                                {% else %}
+                                    {{ row[column] }}
+                                {% endif %}
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="statistics-section">
+        <h3>Quick Statistics</h3>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ data|selectattr('Severity', 'equalto', 'Critical')|list|length }}</div>
+                <div class="stat-label">Critical</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ data|selectattr('Severity', 'equalto', 'High')|list|length }}</div>
+                <div class="stat-label">High</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ data|selectattr('Severity', 'equalto', 'Medium')|list|length }}</div>
+                <div class="stat-label">Medium</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ data|selectattr('Severity', 'equalto', 'Low')|list|length }}</div>
+                <div class="stat-label">Low</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ data|selectattr('Known Exploit', 'in', ['Yes', 'True', 'true', 'yes'])|list|length }}</div>
+                <div class="stat-label">Known Exploits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ data|map(attribute='Resource Name')|unique|list|length }}</div>
+                <div class="stat-label">Unique Hosts</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+        $('#resultsTable').DataTable({
+            responsive: true,
+            pageLength: 25,
+            order: [[{% for column in columns %}{% if column == 'Severity' %}{{ loop.index0 }}{% endif %}{% endfor %}, 'asc']],
+            dom: 'Bfrtip',
+            buttons: [
+                'copyHtml5',
+                'csvHtml5'
+            ],
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+            columnDefs: [
+                { targets: '_all', className: 'dt-body-left' }
+            ]
+        });
+    });
+</script>
+{% endblock %}
