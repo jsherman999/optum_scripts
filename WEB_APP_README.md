@@ -14,8 +14,8 @@ A Flask-based web application for merging vulnerability data from Tenable scans 
 
 - Python 3.7 or higher
 - Required data files:
-  - `cl_erratum_cumulative.csv` - CVE insert dates
-  - `cl_data/` directory - Contains JSON files for infrastructure and deployment data
+  - `erratum_cumulative.csv` - CVE insert dates
+  - `data/` directory - Contains JSON files for infrastructure and deployment data
 
 ## Installation
 
@@ -26,8 +26,8 @@ pip install -r requirements.txt
 ```
 
 2. Ensure you have the required data files in place:
-   - `cl_erratum_cumulative.csv` should be in the root directory
-   - `cl_data/` directory should contain the JSON data files
+   - `erratum_cumulative.csv` should be in the root directory
+   - `data/` directory should contain the JSON data files
 
 ## Running the Application
 
@@ -83,12 +83,12 @@ The application merges data from:
    - Resource names, severity levels, CVE IDs
    - Detection dates and status
 
-2. **cl_erratum_cumulative.csv** (server-side)
+2. **erratum_cumulative.csv** (server-side)
    - Red Hat insert dates
    - Optum insert dates
    - CVE/RHSA mappings
 
-3. **JSON Files in cl_data/** (server-side)
+3. **JSON Files in data/** (server-side)
    - `<hostname>_Infrared.json` - Infrastructure metadata
    - `<hostname>_DeplySched.json` - Deployment schedules
 
@@ -140,14 +140,14 @@ Uploaded files and generated results are stored in the `uploads/` directory with
 
 ## Troubleshooting
 
-### "Error: cl_erratum_cumulative.csv not found"
+### "Error: erratum_cumulative.csv not found"
 Ensure the erratum file is in the application root directory.
 
 ### "Processing timed out"
 The file may be too large. Try splitting it into smaller chunks or increase the timeout in `app.py`.
 
 ### Missing data in results
-Check that the corresponding JSON files exist in `cl_data/` directory for the hostnames in your Tenable.csv.
+Check that the corresponding JSON files exist in `data/` directory for the hostnames in your Tenable.csv.
 
 ## Production Deployment
 

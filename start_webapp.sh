@@ -22,15 +22,15 @@ if ! python3 -c "import flask" &> /dev/null; then
 fi
 
 # Check for required data files
-if [ ! -f "cl_erratum_cumulative.csv" ]; then
-    echo "Warning: cl_erratum_cumulative.csv not found"
+if [ ! -f "erratum_cumulative.csv" ]; then
+    echo "Warning: erratum_cumulative.csv not found"
     echo "The application may not work correctly without this file"
 fi
 
-if [ ! -d "cl_data" ]; then
-    echo "Warning: cl_data directory not found"
-    echo "Creating cl_data directory..."
-    mkdir -p cl_data
+if [ ! -d "data" ]; then
+    echo "Warning: data directory not found"
+    echo "Creating data directory..."
+    mkdir -p data
 fi
 
 # Create uploads directory if it doesn't exist

@@ -127,7 +127,7 @@ def get_earliest_dates(cve_ids: str, erratum_dates: Dict[str, tuple]) -> tuple:
     return (earliest_redhat or '', earliest_optum or '')
 
 
-def load_infrared_data(hostname: str, data_dir: str = 'cl_data') -> Optional[Dict]:
+def load_infrared_data(hostname: str, data_dir: str = 'data') -> Optional[Dict]:
     """
     Load Infrared JSON data for a hostname.
 
@@ -184,7 +184,7 @@ def load_infrared_data(hostname: str, data_dir: str = 'cl_data') -> Optional[Dic
     return None
 
 
-def load_deploy_sched_data(hostname: str, data_dir: str = 'cl_data') -> List[Dict]:
+def load_deploy_sched_data(hostname: str, data_dir: str = 'data') -> List[Dict]:
     """
     Load DeploymentSchedule JSON data for a hostname.
 
@@ -263,7 +263,7 @@ def extract_hostnames(tenable_csv: str) -> Set[str]:
     return hostnames
 
 
-def create_merged_csv(tenable_csv: str, erratum_csv: str, output_csv: str, data_dir: str = 'cl_data'):
+def create_merged_csv(tenable_csv: str, erratum_csv: str, output_csv: str, data_dir: str = 'data'):
     """
     Main function to create the merged CSV file.
 
@@ -416,15 +416,15 @@ def main():
     # Parse command-line arguments
     if len(sys.argv) > 1:
         tenable_csv = sys.argv[1]
-        erratum_csv = sys.argv[2] if len(sys.argv) > 2 else 'cl_erratum_cumulative.csv'
+        erratum_csv = sys.argv[2] if len(sys.argv) > 2 else 'erratum_cumulative.csv'
         output_csv = sys.argv[3] if len(sys.argv) > 3 else 'Merged.csv'
-        data_dir = sys.argv[4] if len(sys.argv) > 4 else 'cl_data'
+        data_dir = sys.argv[4] if len(sys.argv) > 4 else 'data'
     else:
         # Default values
-        tenable_csv = 'cl_Tenable.csv'
-        erratum_csv = 'cl_erratum_cumulative.csv'
-        output_csv = 'cl_Merged.csv'
-        data_dir = 'cl_data'
+        tenable_csv = 'Tenable.csv'
+        erratum_csv = 'erratum_cumulative.csv'
+        output_csv = 'Merged.csv'
+        data_dir = 'data'
 
     # Check input files exist
     if not os.path.exists(tenable_csv):

@@ -73,7 +73,7 @@ def upload_file():
     shutil.copy(upload_path, tenable_path)
 
     # Check if erratum_cumulative.csv exists
-    erratum_csv = 'cl_erratum_cumulative.csv'
+    erratum_csv = 'erratum_cumulative.csv'
     if not os.path.exists(erratum_csv):
         flash(f'Error: {erratum_csv} not found in the application directory', 'error')
         return redirect(url_for('index'))
@@ -86,11 +86,11 @@ def upload_file():
         data_dir = os.path.join(app.config['UPLOAD_FOLDER'], f'data_{timestamp}')
         os.makedirs(data_dir, exist_ok=True)
 
-        # Check if cl_data exists and copy to working data directory
-        if os.path.exists('cl_data'):
-            # Copy all files from cl_data to the working data directory
-            for item in os.listdir('cl_data'):
-                src = os.path.join('cl_data', item)
+        # Check if data directory exists and copy to working data directory
+        if os.path.exists('data'):
+            # Copy all files from data to the working data directory
+            for item in os.listdir('data'):
+                src = os.path.join('data', item)
                 dst = os.path.join(data_dir, item)
                 if os.path.isfile(src):
                     shutil.copy2(src, dst)
